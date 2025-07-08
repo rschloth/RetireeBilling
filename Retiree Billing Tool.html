@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retiree Healthcare Billing Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 40;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Retiree Healthcare Billing Tracker</h1>
+            <p class="text-gray-600 mt-1">A collaborative tool to manage and track retiree account balances.</p>
+            <div class="mt-4 text-xs text-gray-500">
+                <p>Your User ID (share with colleagues for collaboration): <span id="userIdDisplay" class="font-mono bg-gray-200 p-1 rounded"></span></p>
+            </div>
+        </header>
+
+        <main>
+            <!-- Add Retiree Form -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold mb-4">Add New Retiree</h2>
+                <form id="addRetireeForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label for="retireeName" class="block text-sm font-medium text-gray-700">Retiree Name</label>
+                        <input type="text" id="retireeName" name="retireeName" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="initialBilling" class="block text-sm font-medium text-gray-700">Initial Amount Billed ($)</label>
+                        <input type="number" id="initialBilling" name="initialBilling" min="0" step="0.01" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                    <button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 h-10">Add Retiree</button>
+                </form>
+            </div>
+
+            <!-- Retiree List -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                 <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-xl font-semibold">Retiree Accounts</h2>
+                    <p class="text-sm text-gray-600 mt-1">Click on a retiree to add a payment or view history.</p>
+                </div>
+                <div id="loading" class="p-6 text-center text-gray-500">Loading retiree data...</div>
+                <div id="retireeList" class="divide-y divide-gray-200">
+                    <!-- Retiree items will be injected here by JavaScript -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main Modal -->
+    <div id="activityModalBackdrop" class="modal-backdrop"></div>
+    <div id="activityModal" class="modal bg-white w-11/12 md:max-w-3xl mx-auto rounded-lg shadow-lg">
+        <div class="p-6">
+            <div class="flex justify-between items-start">
+                <h3 class="text-xl font-semibold text-gray-900">Manage Account: <span id="modalRetireeName" class="font-bold"></span></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                <!-- Left Column: Forms -->
+                <div class="space-y-6">
+                    <!-- Add Payment Form -->
+                    <form id="paymentForm">
+                        <input type="hidden" id="modalRetireeId">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Add New Payment</h4>
+                        <label for="paymentAmount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                        <div class="mt-1 flex space-x-2">
+                            <input type="number" id="paymentAmount" name="paymentAmount" min="0" step="0.01" required class="flex-grow block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">Add</button>
+                        </div>
+                    </form>
+
+                    <!-- Log Activity Form -->
+                    <form id="logActivityForm">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Log an Activity</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label for="activityDescription" class="block text-sm font-medium text-gray-700">Activity Description</label>
+                                <input type="text" id="activityDescription" required placeholder="e.g., Sent reminder email" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="activityPerson" class="block text-sm font-medium text-gray-700">Performed By</label>
+                                <input type="text" id="activityPerson" required placeholder="Your Name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">Log Activity</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right Column: History -->
+                <div class="space-y-6 mt-6 md:mt-0">
+                    <!-- Payment History Section -->
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Payment History</h4>
+                        <div id="paymentHistoryList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border">
+                            <!-- History items will be injected here -->
+                        </div>
+                    </div>
+                    <!-- Activity Log Section -->
+                     <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Activity Log</h4>
+                        <div id="activityLogList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border">
+                            <!-- Activity items will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Close button at the bottom -->
+            <div class="mt-6 pt-4 border-t flex justify-end">
+                <button type="button" onclick="closeModal()" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Firebase Configuration ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, query, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Environment Variables ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-retiree-tracker';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUserId = null;
+        let retireesCollectionRef;
+        let localRetireesCache = [];
+
+        // --- Authentication ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                currentUserId = user.uid;
+                document.getElementById('userIdDisplay').textContent = currentUserId;
+                const collectionPath = `artifacts/${appId}/public/data/retirees`;
+                retireesCollectionRef = collection(db, collectionPath);
+                listenForRetirees();
+            } else {
+                document.getElementById('userIdDisplay').textContent = "Not signed in";
+            }
+        });
+
+        async function signIn() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication failed:", error);
+            }
+        }
+        
+        // --- Firestore Real-time Listener ---
+        function listenForRetirees() {
+            if (!retireesCollectionRef) return;
+            const q = query(retireesCollectionRef);
+            onSnapshot(q, (snapshot) => {
+                const retireeList = document.getElementById('retireeList');
+                const loadingDiv = document.getElementById('loading');
+                
+                if (loadingDiv) {
+                    loadingDiv.style.display = snapshot.empty ? 'block' : 'none';
+                    if (snapshot.empty) {
+                        loadingDiv.innerHTML = 'No retirees found. Add one to get started!';
+                    }
+                }
+                
+                let retirees = [];
+                snapshot.forEach(doc => {
+                    retirees.push({ id: doc.id, ...doc.data() });
+                });
+
+                retirees.sort((a, b) => a.name.localeCompare(b.name));
+                localRetireesCache = retirees; 
+                
+                retireeList.innerHTML = '';
+                localRetireesCache.forEach(retiree => {
+                    const balance = (retiree.totalBilled || 0) - (retiree.totalPaid || 0);
+                    const balanceColor = balance > 0 ? 'text-red-600' : 'text-green-600';
+
+                    const retireeElement = document.createElement('div');
+                    retireeElement.className = 'p-4 sm:p-6 hover:bg-gray-50 cursor-pointer';
+                    retireeElement.onclick = () => openModal(retiree.id);
+
+                    retireeElement.innerHTML = `
+                        <div class="flex flex-wrap justify-between items-center">
+                            <div class="w-full sm:w-1/3 mb-2 sm:mb-0">
+                                <p class="font-semibold text-lg text-indigo-700">${retiree.name}</p>
+                            </div>
+                            <div class="w-1/2 sm:w-auto text-center sm:text-left">
+                                <p class="text-xs text-gray-500">Billed</p>
+                                <p class="font-medium">$${(retiree.totalBilled || 0).toFixed(2)}</p>
+                            </div>
+                            <div class="w-1/2 sm:w-auto text-center sm:text-left">
+                                <p class="text-xs text-gray-500">Paid</p>
+                                <p class="font-medium">$${(retiree.totalPaid || 0).toFixed(2)}</p>
+                            </div>
+                            <div class="w-full sm:w-auto text-center sm:text-right mt-2 sm:mt-0">
+                                <p class="text-xs text-gray-500">Balance</p>
+                                <p class="font-bold text-xl ${balanceColor}">$${Math.abs(balance).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    `;
+                    retireeList.appendChild(retireeElement);
+                });
+            }, error => {
+                console.error("Error fetching retirees:", error);
+                const loadingDiv = document.getElementById('loading');
+                if(loadingDiv) {
+                    loadingDiv.innerHTML = 'Error loading data. Please refresh.';
+                    loadingDiv.style.display = 'block';
+                }
+            });
+        }
+
+        // --- Event Handlers ---
+        document.getElementById('addRetireeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!retireesCollectionRef) return;
+            const name = document.getElementById('retireeName').value;
+            const initialBilling = parseFloat(document.getElementById('initialBilling').value);
+            try {
+                await addDoc(retireesCollectionRef, { 
+                    name, 
+                    totalBilled: initialBilling, 
+                    totalPaid: 0, 
+                    paymentHistory: [],
+                    activityLog: [] // Initialize activity log
+                });
+                e.target.reset();
+            } catch (error) {
+                console.error("Error adding retiree: ", error);
+            }
+        });
+
+        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!retireesCollectionRef) return;
+            const retireeId = document.getElementById('modalRetireeId').value;
+            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+            if (isNaN(paymentAmount) || paymentAmount <= 0) return;
+            const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const retireeDoc = await transaction.get(retireeRef);
+                    if (!retireeDoc.exists()) throw "Document does not exist!";
+                    const data = retireeDoc.data();
+                    const newTotalPaid = (data.totalPaid || 0) + paymentAmount;
+                    const newPaymentHistory = [...(data.paymentHistory || []), { amount: paymentAmount, date: new Date().toISOString() }];
+                    transaction.update(retireeRef, { totalPaid: newTotalPaid, paymentHistory: newPaymentHistory });
+                });
+                document.getElementById('paymentAmount').value = '';
+            } catch (error) {
+                console.error("Payment transaction failed: ", error);
+            }
+        });
+
+        document.getElementById('logActivityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!retireesCollectionRef) return;
+            const retireeId = document.getElementById('modalRetireeId').value;
+            const description = document.getElementById('activityDescription').value;
+            const person = document.getElementById('activityPerson').value;
+            if (!description || !person) return;
+
+            const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const retireeDoc = await transaction.get(retireeRef);
+                    if (!retireeDoc.exists()) throw "Document does not exist!";
+                    const data = retireeDoc.data();
+                    const newActivityLog = [...(data.activityLog || []), { description, person, date: new Date().toISOString() }];
+                    transaction.update(retireeRef, { activityLog: newActivityLog });
+                });
+                e.target.reset();
+            } catch (error) {
+                console.error("Activity log transaction failed: ", error);
+            }
+        });
+
+        // --- Modal Control ---
+        const modal = document.getElementById('activityModal');
+        const modalBackdrop = document.getElementById('activityModalBackdrop');
+        
+        window.openModal = (retireeId) => {
+            const retiree = localRetireesCache.find(r => r.id === retireeId);
+            if (!retiree) return;
+
+            document.getElementById('modalRetireeId').value = retiree.id;
+            document.getElementById('modalRetireeName').textContent = retiree.name;
+
+            // Populate Payment History
+            const paymentHistoryList = document.getElementById('paymentHistoryList');
+            paymentHistoryList.innerHTML = '';
+            if (retiree.paymentHistory && retiree.paymentHistory.length > 0) {
+                [...retiree.paymentHistory].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between items-center p-2 border-b border-gray-200 text-sm last:border-b-0';
+                    const date = new Date(p.date).toLocaleDateString();
+                    item.innerHTML = `<span>${date}</span><span class="font-medium">$${p.amount.toFixed(2)}</span>`;
+                    paymentHistoryList.appendChild(item);
+                });
+            } else {
+                paymentHistoryList.innerHTML = '<p class="text-gray-500 p-2">No payments found.</p>';
+            }
+
+            // Populate Activity Log
+            const activityLogList = document.getElementById('activityLogList');
+            activityLogList.innerHTML = '';
+            if (retiree.activityLog && retiree.activityLog.length > 0) {
+                [...retiree.activityLog].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(a => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 border-b border-gray-200 text-sm last:border-b-0';
+                    const date = new Date(a.date).toLocaleString();
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-gray-800">${a.description}</span>
+                            <span class="text-gray-500 text-xs">${date}</span>
+                        </div>
+                        <div class="text-right text-xs text-gray-600">Logged by: ${a.person}</div>
+                    `;
+                    activityLogList.appendChild(item);
+                });
+            } else {
+                activityLogList.innerHTML = '<p class="text-gray-500 p-2">No activities logged.</p>';
+            }
+
+            modal.style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        };
+
+        window.closeModal = () => {
+            document.getElementById('paymentForm').reset();
+            document.getElementById('logActivityForm').reset();
+            modal.style.display = 'none';
+            modalBackdrop.style.display = 'none';
+        };
+        
+        // --- Initial Load ---
+        signIn();
+    </script>
+</body>
+</html>
