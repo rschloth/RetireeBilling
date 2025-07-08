@@ -86,7 +86,7 @@
                 <div class="space-y-6">
                     <!-- Add Payment Form -->
                     <form id="paymentForm">
-                        <input type="hidden" id="modalRetireeId">
+                        <input type="hidden" id="paymentFormRetireeId">
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Add New Payment</h4>
                         <label for="paymentAmount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
                         <div class="mt-1 flex space-x-2">
@@ -97,6 +97,7 @@
 
                     <!-- Log Activity Form -->
                     <form id="logActivityForm">
+                        <input type="hidden" id="logActivityFormRetireeId">
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Log an Activity</h4>
                         <div class="space-y-3">
                             <div>
@@ -145,7 +146,6 @@
         import { getFirestore, collection, doc, addDoc, onSnapshot, query, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Your Firebase Project Configuration ---
-        // This object was copied from your Firebase project console.
         const firebaseConfig = {
           apiKey: "AIzaSyBW0DKbjL0NvLRL_KpZeEgq1pOu26ncPug",
           authDomain: "retiree-billing-5207a.firebaseapp.com",
@@ -170,8 +170,6 @@
             if (user) {
                 currentUserId = user.uid;
                 document.getElementById('userIdDisplay').textContent = currentUserId;
-                // This is the name of the collection in your Firestore database.
-                // It will be created automatically when you add the first retiree.
                 const collectionPath = 'retirees';
                 retireesCollectionRef = collection(db, collectionPath);
                 listenForRetirees();
@@ -182,8 +180,6 @@
 
         async function signIn() {
             try {
-                // Sign in anonymously. For a production app, you might implement a full
-                // authentication system (e.g., email/password, Google Sign-In).
                 await signInAnonymously(auth);
             } catch (error) {
                 console.error("Authentication failed:", error);
@@ -265,7 +261,7 @@
                     totalBilled: initialBilling, 
                     totalPaid: 0, 
                     paymentHistory: [],
-                    activityLog: [] // Initialize activity log
+                    activityLog: []
                 });
                 e.target.reset();
             } catch (error) {
@@ -276,7 +272,7 @@
         document.getElementById('paymentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!retireesCollectionRef) return;
-            const retireeId = document.getElementById('modalRetireeId').value;
+            const retireeId = document.getElementById('paymentFormRetireeId').value;
             const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
             if (isNaN(paymentAmount) || paymentAmount <= 0) return;
             const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
@@ -298,7 +294,7 @@
         document.getElementById('logActivityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!retireesCollectionRef) return;
-            const retireeId = document.getElementById('modalRetireeId').value;
+            const retireeId = document.getElementById('logActivityFormRetireeId').value;
             const description = document.getElementById('activityDescription').value;
             const person = document.getElementById('activityPerson').value;
             if (!description || !person) return;
@@ -326,7 +322,8 @@
             const retiree = localRetireesCache.find(r => r.id === retireeId);
             if (!retiree) return;
 
-            document.getElementById('modalRetireeId').value = retiree.id;
+            document.getElementById('paymentFormRetireeId').value = retiree.id;
+            document.getElementById('logActivityFormRetireeId').value = retiree.id;
             document.getElementById('modalRetireeName').textContent = retiree.name;
 
             // Populate Payment History
@@ -381,3 +378,29 @@
     </script>
 </body>
 </html>
+```
+
+### **Action Required: Update Your Firestore Security Rules**
+
+After you update your HTML file on GitHub with the code above, you need to tell your database to accept the changes.
+
+1.  Go to the **[Firebase Console](https://console.firebase.google.com/)** and select your project (`retiree-billing-5207a`).
+2.  In the left menu, under "Build," click on **Firestore Database**.
+3.  At the top of the page, click the **Rules** tab.
+4.  You will see the default rules. **Delete all of the existing text** and replace it with this:
+
+    ```
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /retirees/{retireeId} {
+          allow read, write: if request.auth != null;
+        }
+      }
+    }
+    ```
+5.  Click the **Publish** button.
+
+This new rule tells Firestore: "Allow any user who is signed in (even anonymously) to read, add, and update records in the `retirees` collection."
+
+Once you've updated both the HTML file and the security rules, your tool should work perfect
