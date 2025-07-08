@@ -140,31 +140,21 @@
 
     <script type="module">
         // --- Firebase Configuration ---
-       // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, query, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBW0DKbjL0NvLRL_KpZeEgq1pOu26ncPug",
-  authDomain: "retiree-billing-5207a.firebaseapp.com",
-  projectId: "retiree-billing-5207a",
-  storageBucket: "retiree-billing-5207a.firebasestorage.app",
-  messagingSenderId: "339304053732",
-  appId: "1:339304053732:web:154678278863d6f787a5f1",
-  measurementId: "G-W49397MDWZ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-        // --- Environment Variables ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-retiree-tracker';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- Your Firebase Project Configuration ---
+        // This object was copied from your Firebase project console.
+        const firebaseConfig = {
+          apiKey: "AIzaSyBW0DKbjL0NvLRL_KpZeEgq1pOu26ncPug",
+          authDomain: "retiree-billing-5207a.firebaseapp.com",
+          projectId: "retiree-billing-5207a",
+          storageBucket: "retiree-billing-5207a.firebasestorage.app",
+          messagingSenderId: "339304053732",
+          appId: "1:339304053732:web:154678278863d6f787a5f1",
+          measurementId: "G-W49397MDWZ"
+        };
 
         // --- Firebase Initialization ---
         const app = initializeApp(firebaseConfig);
@@ -180,7 +170,9 @@ const analytics = getAnalytics(app);
             if (user) {
                 currentUserId = user.uid;
                 document.getElementById('userIdDisplay').textContent = currentUserId;
-                const collectionPath = `artifacts/${appId}/public/data/retirees`;
+                // This is the name of the collection in your Firestore database.
+                // It will be created automatically when you add the first retiree.
+                const collectionPath = 'retirees';
                 retireesCollectionRef = collection(db, collectionPath);
                 listenForRetirees();
             } else {
@@ -190,11 +182,9 @@ const analytics = getAnalytics(app);
 
         async function signIn() {
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Sign in anonymously. For a production app, you might implement a full
+                // authentication system (e.g., email/password, Google Sign-In).
+                await signInAnonymously(auth);
             } catch (error) {
                 console.error("Authentication failed:", error);
             }
