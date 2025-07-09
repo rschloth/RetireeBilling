@@ -106,6 +106,17 @@
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8">
                 <!-- Left Column: Forms -->
                 <div class="space-y-6">
+                    <!-- Edit Bill Date Form -->
+                     <form id="editBillDateForm">
+                        <input type="hidden" id="editBillDateFormRetireeId">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Edit Bill Date</h4>
+                        <label for="modalPastDueDate" class="block text-sm font-medium text-gray-700">Past Due Bill Date</label>
+                        <div class="mt-1 flex space-x-2">
+                            <input type="date" id="modalPastDueDate" required class="flex-grow block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700">Save</button>
+                        </div>
+                    </form>
+                    
                     <!-- Add Payment Form -->
                     <form id="paymentForm">
                         <input type="hidden" id="paymentFormRetireeId">
@@ -208,7 +219,7 @@
             }
         });
         
-        document.getElementById('sortOrder').addEventListener('change', () => listenForRetirees());
+        document.getElementById('sortOrder').addEventListener('change', () => renderRetireeList());
 
 
         async function signIn() {
@@ -224,9 +235,7 @@
             if (!retireesCollectionRef) return;
             const q = query(retireesCollectionRef);
             onSnapshot(q, (snapshot) => {
-                const retireeList = document.getElementById('retireeList');
                 const loadingDiv = document.getElementById('loading');
-                
                 if (loadingDiv) {
                     loadingDiv.style.display = snapshot.empty ? 'block' : 'none';
                     if (snapshot.empty) loadingDiv.innerHTML = 'No retirees found. Add one to get started!';
@@ -253,17 +262,17 @@
             sortedRetirees.forEach(r => {
                 const balance = (r.totalBilled || 0) - (r.totalPaid || 0);
                 if (balance > 0 && r.pastDueDate) {
-                    const dueDate = new Date(r.pastDueDate + 'T00:00:00'); // Treat date as local
-                    r.daysOverdue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+                    const dueDate = new Date(r.pastDueDate + 'T00:00:00');
+                    r.monthsOverdue = (now.getFullYear() - dueDate.getFullYear()) * 12 + (now.getMonth() - dueDate.getMonth());
                 } else {
-                    r.daysOverdue = -1; // Not overdue
+                    r.monthsOverdue = -1; // Not overdue
                 }
             });
 
             if (sortOrder === 'alpha') {
                 sortedRetirees.sort((a, b) => a.name.localeCompare(b.name));
             } else if (sortOrder === 'overdue') {
-                sortedRetirees.sort((a, b) => b.daysOverdue - a.daysOverdue);
+                sortedRetirees.sort((a, b) => b.monthsOverdue - a.monthsOverdue);
             } else if (sortOrder === 'newestBill') {
                 sortedRetirees.sort((a, b) => new Date(b.pastDueDate) - new Date(a.pastDueDate));
             }
@@ -279,10 +288,10 @@
                 retireeElement.onclick = () => openModal(retiree.id);
 
                 let overdueHTML = '';
-                if(retiree.daysOverdue >= 0) {
+                if(retiree.monthsOverdue >= 0) {
                     overdueHTML = `<div class="w-full sm:w-auto text-center sm:text-left mt-2 sm:mt-0">
-                                    <p class="text-xs text-gray-500">Days Overdue</p>
-                                    <p class="font-bold text-lg text-orange-600">${retiree.daysOverdue}</p>
+                                    <p class="text-xs text-gray-500">Months Overdue</p>
+                                    <p class="font-bold text-lg text-orange-600">${retiree.monthsOverdue}</p>
                                 </div>`;
                 }
 
@@ -363,6 +372,16 @@
             }
         });
         
+        document.getElementById('editBillDateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const retireeId = document.getElementById('editBillDateFormRetireeId').value;
+            const newDate = document.getElementById('modalPastDueDate').value;
+            if (newDate) {
+                await updatePastDueDate(retireeId, newDate);
+                // Maybe add a temporary success message here
+            }
+        });
+        
         // --- Delete & Update Handlers ---
         async function deleteRetiree(retireeId) {
             await deleteDoc(doc(db, retireesCollectionRef.path, retireeId));
@@ -399,6 +418,11 @@
             await updateDoc(doc(db, retireesCollectionRef.path, retireeId), { name: newName });
         }
         
+        async function updatePastDueDate(retireeId, newDate) {
+             if (!newDate) return;
+            await updateDoc(doc(db, retireesCollectionRef.path, retireeId), { pastDueDate: newDate });
+        }
+        
         async function updateActivity(retireeId, activityDate, newDescription) {
             if (!newDescription) return;
             const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
@@ -428,7 +452,9 @@
 
             document.getElementById('paymentFormRetireeId').value = retiree.id;
             document.getElementById('logActivityFormRetireeId').value = retiree.id;
+            document.getElementById('editBillDateFormRetireeId').value = retiree.id;
             document.getElementById('modalRetireeName').textContent = retiree.name;
+            document.getElementById('modalPastDueDate').value = retiree.pastDueDate;
             
             document.getElementById('editNameBtn').onclick = () => {
                 const newName = prompt("Enter new name for retiree:", retiree.name);
