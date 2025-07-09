@@ -28,14 +28,13 @@
             transform: translate(-50%, -50%);
             z-index: 50;
         }
-        /* Custom styles for the confirmation dialog */
         .confirm-dialog {
             display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 60; /* Higher than the modal */
+            z-index: 60;
         }
     </style>
 </head>
@@ -54,14 +53,18 @@
             <!-- Add Retiree Form -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <h2 class="text-xl font-semibold mb-4">Add New Retiree</h2>
-                <form id="addRetireeForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <form id="addRetireeForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div>
                         <label for="retireeName" class="block text-sm font-medium text-gray-700">Retiree Name</label>
-                        <input type="text" id="retireeName" name="retireeName" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <input type="text" id="retireeName" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     </div>
                     <div>
                         <label for="initialBilling" class="block text-sm font-medium text-gray-700">Initial Amount Billed ($)</label>
-                        <input type="number" id="initialBilling" name="initialBilling" min="0" step="0.01" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <input type="number" id="initialBilling" min="0" step="0.01" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="pastDueDate" class="block text-sm font-medium text-gray-700">Past Due Bill Date</label>
+                        <input type="date" id="pastDueDate" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     </div>
                     <button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 h-10">Add Retiree</button>
                 </form>
@@ -69,9 +72,16 @@
 
             <!-- Retiree List -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                 <div class="p-6 border-b border-gray-200">
+                 <div class="p-6 border-b border-gray-200 flex justify-between items-center">
                     <h2 class="text-xl font-semibold">Retiree Accounts</h2>
-                    <p class="text-sm text-gray-600 mt-1">Click on a retiree to add a payment or view history.</p>
+                    <div class="flex items-center space-x-2">
+                        <label for="sortOrder" class="text-sm font-medium text-gray-700">Sort by:</label>
+                        <select id="sortOrder" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="overdue">Most Overdue</option>
+                            <option value="alpha">Alphabetical (A-Z)</option>
+                            <option value="newestBill">Newest Bill Date</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="loading" class="p-6 text-center text-gray-500">Loading retiree data...</div>
                 <div id="retireeList" class="divide-y divide-gray-200">
@@ -86,7 +96,10 @@
     <div id="activityModal" class="modal bg-white w-11/12 md:max-w-3xl mx-auto rounded-lg shadow-lg">
         <div class="p-6">
             <div class="flex justify-between items-start">
-                <h3 class="text-xl font-semibold text-gray-900">Manage Account: <span id="modalRetireeName" class="font-bold"></span></h3>
+                 <div id="retireeNameContainer" class="flex items-center gap-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Manage Account: <span id="modalRetireeName" class="font-bold"></span></h3>
+                    <button id="editNameBtn" class="text-blue-500 hover:text-blue-700 text-xs">[Edit]</button>
+                </div>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
             </div>
             
@@ -127,16 +140,12 @@
                     <!-- Payment History Section -->
                     <div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Payment History</h4>
-                        <div id="paymentHistoryList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border">
-                            <!-- History items will be injected here -->
-                        </div>
+                        <div id="paymentHistoryList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border"></div>
                     </div>
                     <!-- Activity Log Section -->
                      <div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Activity Log</h4>
-                        <div id="activityLogList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border">
-                            <!-- Activity items will be injected here -->
-                        </div>
+                        <div id="activityLogList" class="max-h-40 overflow-y-auto bg-gray-50 rounded-md p-1 space-y-1 border"></div>
                     </div>
                 </div>
             </div>
@@ -151,11 +160,11 @@
     
     <!-- Confirmation Dialog -->
     <div id="confirmDialog" class="confirm-dialog bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-sm">
-        <h3 class="text-lg font-bold text-gray-900">Confirm Deletion</h3>
-        <p class="text-gray-600 my-4" id="confirmMessage">Are you sure you want to delete this item?</p>
+        <h3 class="text-lg font-bold text-gray-900">Confirm Action</h3>
+        <p class="text-gray-600 my-4" id="confirmMessage">Are you sure?</p>
         <div class="flex justify-end space-x-4">
             <button id="cancelDelete" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Cancel</button>
-            <button id="confirmDelete" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700">Delete</button>
+            <button id="confirmDelete" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700">Confirm</button>
         </div>
     </div>
 
@@ -164,7 +173,7 @@
         // --- Firebase Configuration ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, onSnapshot, query, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, query, runTransaction, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Your Firebase Project Configuration ---
         const firebaseConfig = {
@@ -198,6 +207,9 @@
                 document.getElementById('userIdDisplay').textContent = "Not signed in";
             }
         });
+        
+        document.getElementById('sortOrder').addEventListener('change', () => listenForRetirees());
+
 
         async function signIn() {
             try {
@@ -207,7 +219,7 @@
             }
         }
         
-        // --- Firestore Real-time Listener ---
+        // --- Firestore Real-time Listener & Renderer ---
         function listenForRetirees() {
             if (!retireesCollectionRef) return;
             const q = query(retireesCollectionRef);
@@ -217,9 +229,7 @@
                 
                 if (loadingDiv) {
                     loadingDiv.style.display = snapshot.empty ? 'block' : 'none';
-                    if (snapshot.empty) {
-                        loadingDiv.innerHTML = 'No retirees found. Add one to get started!';
-                    }
+                    if (snapshot.empty) loadingDiv.innerHTML = 'No retirees found. Add one to get started!';
                 }
                 
                 let retirees = [];
@@ -227,63 +237,84 @@
                     retirees.push({ id: doc.id, ...doc.data() });
                 });
 
-                retirees.sort((a, b) => a.name.localeCompare(b.name));
                 localRetireesCache = retirees; 
-                
-                retireeList.innerHTML = '';
-                localRetireesCache.forEach(retiree => {
-                    const balance = (retiree.totalBilled || 0) - (retiree.totalPaid || 0);
-                    const balanceColor = balance > 0 ? 'text-red-600' : 'text-green-600';
-
-                    const retireeElement = document.createElement('div');
-                    retireeElement.className = 'p-4 sm:p-6 hover:bg-gray-50 cursor-pointer';
-                    retireeElement.onclick = () => openModal(retiree.id);
-
-                    retireeElement.innerHTML = `
-                        <div class="flex flex-wrap justify-between items-center">
-                            <div class="w-full sm:w-1/3 mb-2 sm:mb-0">
-                                <p class="font-semibold text-lg text-indigo-700">${retiree.name}</p>
-                            </div>
-                            <div class="w-1/2 sm:w-auto text-center sm:text-left">
-                                <p class="text-xs text-gray-500">Billed</p>
-                                <p class="font-medium">$${(retiree.totalBilled || 0).toFixed(2)}</p>
-                            </div>
-                            <div class="w-1/2 sm:w-auto text-center sm:text-left">
-                                <p class="text-xs text-gray-500">Paid</p>
-                                <p class="font-medium">$${(retiree.totalPaid || 0).toFixed(2)}</p>
-                            </div>
-                            <div class="w-full sm:w-auto text-center sm:text-right mt-2 sm:mt-0">
-                                <p class="text-xs text-gray-500">Balance</p>
-                                <p class="font-bold text-xl ${balanceColor}">$${Math.abs(balance).toFixed(2)}</p>
-                            </div>
-                        </div>
-                    `;
-                    retireeList.appendChild(retireeElement);
-                });
+                renderRetireeList();
             }, error => {
                 console.error("Error fetching retirees:", error);
-                const loadingDiv = document.getElementById('loading');
-                if(loadingDiv) {
-                    loadingDiv.innerHTML = 'Error loading data. Please refresh.';
-                    loadingDiv.style.display = 'block';
+            });
+        }
+        
+        function renderRetireeList() {
+            const sortOrder = document.getElementById('sortOrder').value;
+            let sortedRetirees = [...localRetireesCache];
+
+            const now = new Date();
+            
+            sortedRetirees.forEach(r => {
+                const balance = (r.totalBilled || 0) - (r.totalPaid || 0);
+                if (balance > 0 && r.pastDueDate) {
+                    const dueDate = new Date(r.pastDueDate + 'T00:00:00'); // Treat date as local
+                    r.daysOverdue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+                } else {
+                    r.daysOverdue = -1; // Not overdue
                 }
+            });
+
+            if (sortOrder === 'alpha') {
+                sortedRetirees.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortOrder === 'overdue') {
+                sortedRetirees.sort((a, b) => b.daysOverdue - a.daysOverdue);
+            } else if (sortOrder === 'newestBill') {
+                sortedRetirees.sort((a, b) => new Date(b.pastDueDate) - new Date(a.pastDueDate));
+            }
+            
+            const retireeList = document.getElementById('retireeList');
+            retireeList.innerHTML = '';
+            sortedRetirees.forEach(retiree => {
+                const balance = (retiree.totalBilled || 0) - (retiree.totalPaid || 0);
+                const balanceColor = balance > 0 ? 'text-red-600' : 'text-green-600';
+
+                const retireeElement = document.createElement('div');
+                retireeElement.className = 'p-4 sm:p-6 hover:bg-gray-50 cursor-pointer';
+                retireeElement.onclick = () => openModal(retiree.id);
+
+                let overdueHTML = '';
+                if(retiree.daysOverdue >= 0) {
+                    overdueHTML = `<div class="w-full sm:w-auto text-center sm:text-left mt-2 sm:mt-0">
+                                    <p class="text-xs text-gray-500">Days Overdue</p>
+                                    <p class="font-bold text-lg text-orange-600">${retiree.daysOverdue}</p>
+                                </div>`;
+                }
+
+                retireeElement.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-center">
+                        <div class="w-full sm:w-1/3 mb-2 sm:mb-0">
+                            <p class="font-semibold text-lg text-indigo-700">${retiree.name}</p>
+                            <p class="text-xs text-gray-500">Bill Date: ${new Date(retiree.pastDueDate + 'T00:00:00').toLocaleDateString()}</p>
+                        </div>
+                        ${overdueHTML}
+                        <div class="w-1/2 sm:w-auto text-center sm:text-left">
+                            <p class="text-xs text-gray-500">Paid</p>
+                            <p class="font-medium">$${(retiree.totalPaid || 0).toFixed(2)}</p>
+                        </div>
+                        <div class="w-1/2 sm:w-auto text-center sm:text-left">
+                            <p class="text-xs text-gray-500">Balance</p>
+                            <p class="font-bold text-xl ${balanceColor}">$${Math.abs(balance).toFixed(2)}</p>
+                        </div>
+                    </div>
+                `;
+                retireeList.appendChild(retireeElement);
             });
         }
 
         // --- Event Handlers ---
         document.getElementById('addRetireeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!retireesCollectionRef) return;
             const name = document.getElementById('retireeName').value;
             const initialBilling = parseFloat(document.getElementById('initialBilling').value);
+            const pastDueDate = document.getElementById('pastDueDate').value;
             try {
-                await addDoc(retireesCollectionRef, { 
-                    name, 
-                    totalBilled: initialBilling, 
-                    totalPaid: 0, 
-                    paymentHistory: [],
-                    activityLog: []
-                });
+                await addDoc(retireesCollectionRef, { name, totalBilled: initialBilling, totalPaid: 0, pastDueDate, paymentHistory: [], activityLog: [] });
                 e.target.reset();
             } catch (error) {
                 console.error("Error adding retiree: ", error);
@@ -292,7 +323,6 @@
 
         document.getElementById('paymentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!retireesCollectionRef) return;
             const retireeId = document.getElementById('paymentFormRetireeId').value;
             const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
             if (isNaN(paymentAmount) || paymentAmount <= 0) return;
@@ -314,12 +344,10 @@
 
         document.getElementById('logActivityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!retireesCollectionRef) return;
             const retireeId = document.getElementById('logActivityFormRetireeId').value;
             const description = document.getElementById('activityDescription').value;
             const person = document.getElementById('activityPerson').value;
             if (!description || !person) return;
-
             const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
             try {
                 await runTransaction(db, async (transaction) => {
@@ -335,46 +363,57 @@
             }
         });
         
-        // --- Delete Handlers ---
+        // --- Delete & Update Handlers ---
         async function deleteRetiree(retireeId) {
-            const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
-            try {
-                await deleteDoc(retireeRef);
-                closeModal(); // Close the modal after successful deletion
-            } catch (e) {
-                console.error("Error deleting retiree: ", e);
-            }
+            await deleteDoc(doc(db, retireesCollectionRef.path, retireeId));
+            closeModal();
         }
 
-        async function deletePayment(retireeId, paymentDate, paymentAmount) {
+        async function deletePayment(retireeId, paymentDate) {
             const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
-            try {
-                await runTransaction(db, async (transaction) => {
-                    const retireeDoc = await transaction.get(retireeRef);
-                    if (!retireeDoc.exists()) throw "Document does not exist!";
-                    const data = retireeDoc.data();
-                    const newTotalPaid = (data.totalPaid || 0) - paymentAmount;
-                    const newPaymentHistory = data.paymentHistory.filter(p => p.date !== paymentDate);
-                    transaction.update(retireeRef, { totalPaid: newTotalPaid, paymentHistory: newPaymentHistory });
-                });
-            } catch (e) {
-                console.error("Delete payment transaction failed: ", e);
-            }
+            await runTransaction(db, async (transaction) => {
+                const retireeDoc = await transaction.get(retireeRef);
+                if (!retireeDoc.exists()) throw "Document does not exist!";
+                const data = retireeDoc.data();
+                const paymentToDelete = data.paymentHistory.find(p => p.date === paymentDate);
+                if (!paymentToDelete) return;
+                const newTotalPaid = (data.totalPaid || 0) - paymentToDelete.amount;
+                const newPaymentHistory = data.paymentHistory.filter(p => p.date !== paymentDate);
+                transaction.update(retireeRef, { totalPaid: newTotalPaid, paymentHistory: newPaymentHistory });
+            });
         }
         
         async function deleteActivity(retireeId, activityDate) {
             const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
-             try {
-                await runTransaction(db, async (transaction) => {
-                    const retireeDoc = await transaction.get(retireeRef);
-                    if (!retireeDoc.exists()) throw "Document does not exist!";
-                    const data = retireeDoc.data();
-                    const newActivityLog = data.activityLog.filter(a => a.date !== activityDate);
-                    transaction.update(retireeRef, { activityLog: newActivityLog });
+            await runTransaction(db, async (transaction) => {
+                const retireeDoc = await transaction.get(retireeRef);
+                if (!retireeDoc.exists()) throw "Document does not exist!";
+                const data = retireeDoc.data();
+                const newActivityLog = data.activityLog.filter(a => a.date !== activityDate);
+                transaction.update(retireeRef, { activityLog: newActivityLog });
+            });
+        }
+        
+        async function updateRetireeName(retireeId, newName) {
+            if (!newName) return;
+            await updateDoc(doc(db, retireesCollectionRef.path, retireeId), { name: newName });
+        }
+        
+        async function updateActivity(retireeId, activityDate, newDescription) {
+            if (!newDescription) return;
+            const retireeRef = doc(db, retireesCollectionRef.path, retireeId);
+            await runTransaction(db, async (transaction) => {
+                const retireeDoc = await transaction.get(retireeRef);
+                if (!retireeDoc.exists()) throw "Document does not exist!";
+                const data = retireeDoc.data();
+                const newActivityLog = data.activityLog.map(a => {
+                    if (a.date === activityDate) {
+                        return { ...a, description: newDescription };
+                    }
+                    return a;
                 });
-            } catch (e) {
-                console.error("Delete activity transaction failed: ", e);
-            }
+                transaction.update(retireeRef, { activityLog: newActivityLog });
+            });
         }
 
 
@@ -382,8 +421,6 @@
         const modal = document.getElementById('activityModal');
         const modalBackdrop = document.getElementById('activityModalBackdrop');
         const confirmDialog = document.getElementById('confirmDialog');
-        const confirmDeleteBtn = document.getElementById('confirmDelete');
-        const cancelDeleteBtn = document.getElementById('cancelDelete');
         
         window.openModal = (retireeId) => {
             const retiree = localRetireesCache.find(r => r.id === retireeId);
@@ -393,7 +430,13 @@
             document.getElementById('logActivityFormRetireeId').value = retiree.id;
             document.getElementById('modalRetireeName').textContent = retiree.name;
             
-            // Hook up the delete retiree button
+            document.getElementById('editNameBtn').onclick = () => {
+                const newName = prompt("Enter new name for retiree:", retiree.name);
+                if (newName && newName !== retiree.name) {
+                    updateRetireeName(retiree.id, newName);
+                }
+            };
+            
             document.getElementById('deleteRetireeBtn').onclick = () => {
                 const confirmMessage = `Are you sure you want to permanently delete the entire record for ${retiree.name}? This action cannot be undone.`;
                 showConfirmDialog(() => deleteRetiree(retiree.id), confirmMessage);
@@ -411,9 +454,7 @@
                         <span>${date} - $${p.amount.toFixed(2)}</span>
                         <button class="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
                     `;
-                    item.querySelector('button').onclick = () => {
-                        showConfirmDialog(() => deletePayment(retiree.id, p.date, p.amount));
-                    };
+                    item.querySelector('button').onclick = () => showConfirmDialog(() => deletePayment(retiree.id, p.date));
                     paymentHistoryList.appendChild(item);
                 });
             } else {
@@ -431,12 +472,19 @@
                     item.innerHTML = `
                         <div class="flex justify-between items-center">
                             <span class="font-medium text-gray-800">${a.description}</span>
-                            <button class="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
+                            <div>
+                                <button class="text-blue-500 hover:text-blue-700 text-xs mr-2">[Edit]</button>
+                                <button class="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-600">Logged by: ${a.person} on ${date}</div>
+                        <div class="text-xs text-gray-600">Logged by: ${a.person}</div>
                     `;
-                    item.querySelector('button').onclick = () => {
-                        showConfirmDialog(() => deleteActivity(retiree.id, a.date));
+                    item.querySelector('.text-red-500').onclick = () => showConfirmDialog(() => deleteActivity(retiree.id, a.date));
+                    item.querySelector('.text-blue-500').onclick = () => {
+                        const newDesc = prompt("Enter new description:", a.description);
+                         if (newDesc && newDesc !== a.description) {
+                            updateActivity(retiree.id, a.date, newDesc);
+                        }
                     };
                     activityLogList.appendChild(item);
                 });
@@ -449,29 +497,27 @@
         };
 
         window.closeModal = () => {
-            document.getElementById('paymentForm').reset();
-            document.getElementById('logActivityForm').reset();
             modal.style.display = 'none';
             modalBackdrop.style.display = 'none';
         };
         
         // --- Confirmation Dialog Logic ---
-        function showConfirmDialog(deleteAction, message = "Are you sure you want to delete this item?") {
+        function showConfirmDialog(action, message = "Are you sure?") {
             document.getElementById('confirmMessage').textContent = message;
             confirmDialog.style.display = 'block';
             
-            // Clone and replace the button to remove old event listeners
-            const newConfirmBtn = confirmDeleteBtn.cloneNode(true);
-            confirmDeleteBtn.parentNode.replaceChild(newConfirmBtn, confirmDeleteBtn);
+            const confirmBtn = document.getElementById('confirmDelete');
+            const cancelBtn = document.getElementById('cancelDelete');
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             
             newConfirmBtn.onclick = () => {
-                deleteAction();
+                action();
                 hideConfirmDialog();
             };
             
-            cancelDeleteBtn.onclick = () => {
-                hideConfirmDialog();
-            };
+            cancelBtn.onclick = () => hideConfirmDialog();
         }
         
         function hideConfirmDialog() {
