@@ -379,28 +379,3 @@
 </body>
 </html>
 ```
-
-### **Action Required: Update Your Firestore Security Rules**
-
-After you update your HTML file on GitHub with the code above, you need to tell your database to accept the changes.
-
-1.  Go to the **[Firebase Console](https://console.firebase.google.com/)** and select your project (`retiree-billing-5207a`).
-2.  In the left menu, under "Build," click on **Firestore Database**.
-3.  At the top of the page, click the **Rules** tab.
-4.  You will see the default rules. **Delete all of the existing text** and replace it with this:
-
-    ```
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /retirees/{retireeId} {
-          allow read, write: if request.auth != null;
-        }
-      }
-    }
-    ```
-5.  Click the **Publish** button.
-
-This new rule tells Firestore: "Allow any user who is signed in (even anonymously) to read, add, and update records in the `retirees` collection."
-
-Once you've updated both the HTML file and the security rules, your tool should work perfect
